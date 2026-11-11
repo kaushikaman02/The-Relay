@@ -1,0 +1,22 @@
+venv/
+__pycache__/
+*.py[cod]
+.env
+.streamlit/secrets.toml
+.pytest_cache/
+.mypy_cache/
+
+# Research papers and extracted content
+/papers/
+/data/paper_pages.jsonl
+
+# Experimental CSV results
+/backoff_run_*.csv
+/relay_load_results.csv
+/results.csv
+/retry_results.csv
+/sim_load_results.csv
+/dashboard_metrics_history.csv
+
+# Editor settings
+.vscode/

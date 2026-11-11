@@ -1,0 +1,6 @@
+groq
+python-dotenv
+pandas
+numpy
+requests
+pypdf
