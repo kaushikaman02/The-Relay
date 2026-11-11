@@ -195,6 +195,21 @@ It automatically refreshes live metrics every five seconds.
 - Monitor API performance and service health.
 - Analyse latency and HTTP error distributions.
 - Evaluate system behaviour under concurrent workloads.
+## 📊 Dashboard Preview
+
+### Historical Performance
+![Historical Performance](docs/screenshots/historical-dailyrequests.png)
+
+### HTTP Response Status
+![HTTP Response Status](docs/screenshots/http-response-status-distribution.png)
+
+### Request Latency Distribution
+![Request Latency](docs/screenshots/request-latency-distribution.png)
+
+### Request Processing Distribution
+![Request Processing](docs/screenshots/request-processing-distribution.png)
+
+
 
 ## 🔮 Future Improvements
 
