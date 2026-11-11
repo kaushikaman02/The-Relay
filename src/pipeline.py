@@ -115,7 +115,6 @@ def verify_citations(answer, results):
     "cannot be answered from the supplied evidence",
     "the evidence does not provide enough information",
     "the supplied papers do not contain"
-]
 
     if any(marker in answer.lower() for marker in refusal_markers):
         return "refused_correctly"

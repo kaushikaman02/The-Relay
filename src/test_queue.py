@@ -1,52 +1,105 @@
 
-import time
+import threading
+
+import pytest
 
 from queue_manager import QueueManager
 
 
-def simulated_task(request_id):
-
-    time.sleep(1)
-
-    return f"Request {request_id} completed"
+def add(a, b):
+    return a + b
 
 
-if __name__ == "__main__":
+def failing_task():
+    raise ValueError("Test failure")
 
-    manager = QueueManager(
-        workers=3,
-        max_queue_size=5
-    )
 
-    futures = []
+def test_successful_task():
+    manager = QueueManager(workers=2, max_queue_size=5)
 
-    start = time.perf_counter()
+    try:
+        future = manager.submit(add, 10, 20)
 
-    print("\nSubmitting 15 requests...\n")
+        assert future is not None
+        assert future.result(timeout=5) == 30
 
-    for i in range(1, 16):
+        metrics = manager.get_metrics()
+        assert metrics["completed"] == 1
+        assert metrics["failed"] == 0
+    finally:
+        manager.shutdown()
 
-        future = manager.submit(
-            simulated_task,
-            i
-        )
 
-        if future is not None:
-            futures.append(future)
+def test_failed_task():
+    manager = QueueManager(workers=1, max_queue_size=5)
 
-    manager.shutdown()
+    try:
+        future = manager.submit(failing_task)
 
-    total_time = time.perf_counter() - start
+        assert future is not None
 
-    print("\n--- QUEUE PERFORMANCE REPORT ---")
+        with pytest.raises(ValueError, match="Test failure"):
+            future.result(timeout=5)
 
-    for future in futures:
+        metrics = manager.get_metrics()
+        assert metrics["failed"] == 1
+    finally:
+        manager.shutdown()
 
-        print(future.result())
 
-    metrics = manager.get_metrics()
+def test_queue_full_rejects_request():
+    manager = QueueManager(workers=1, max_queue_size=1)
+    started = threading.Event()
+    release = threading.Event()
 
-    for key, value in metrics.items():
-        print(f"{key}: {value}")
+    def blocking_task():
+        started.set()
+        release.wait(timeout=5)
+        return "completed"
 
-    print("Total execution time:", round(total_time, 2), "seconds")
+    try:
+        first = manager.submit(blocking_task)
+        assert first is not None
+        assert started.wait(timeout=3)
+
+        second = manager.submit(add, 1, 2)
+        assert second is not None
+
+        third = manager.submit(add, 3, 4)
+        assert third is None
+
+        assert manager.get_metrics()["rejected"] == 1
+
+        release.set()
+
+        assert first.result(timeout=5) == "completed"
+        assert second.result(timeout=5) == 3
+    finally:
+        release.set()
+        manager.shutdown()
+
+
+def test_queue_metrics():
+    manager = QueueManager(workers=2, max_queue_size=5)
+
+    try:
+        futures = [
+            manager.submit(add, i, i)
+            for i in range(5)
+        ]
+
+        assert all(future is not None for future in futures)
+
+        results = [future.result(timeout=5) for future in futures]
+
+        assert results == [0, 2, 4, 6, 8]
+
+        metrics = manager.get_metrics()
+
+        assert metrics["workers"] == 2
+        assert metrics["queue_capacity"] == 5
+        assert metrics["completed"] == 5
+        assert metrics["queue_size"] == 0
+        assert metrics["failed"] == 0
+    finally:
+        manager.shutdown()

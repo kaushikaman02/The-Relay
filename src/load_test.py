@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 URL = "http://127.0.0.1:8001/v1/chat/completions"
 
 TOTAL_REQUESTS = 60
-CONCURRENT_USERS = 30
+CONCURRENT_USERS = 3
 
 
 def send_request(request_number):

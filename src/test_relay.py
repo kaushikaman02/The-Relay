@@ -1,69 +1,69 @@
 
 import requests
-import time
+import pytest
 
 BASE_URL = "http://127.0.0.1:8001"
 
-# ----------------------------------
-# TEST 1: HEALTH CHECK
-# ----------------------------------
-
-print("\n--- RELAY HEALTH CHECK ---")
-
-health = requests.get(
-    f"{BASE_URL}/health",
-    timeout=10
-)
-
-print("Status:", health.status_code)
-print("Response:", health.json())
-
-
-# ----------------------------------
-# TEST 2: SEND API REQUEST
-# ----------------------------------
-
-print("\n--- TESTING MODEL REQUEST ---")
-
-payload = {
-    "model": "relay-simulator",
+PAYLOAD = {
+    "model": "test-model",
     "messages": [
         {
             "role": "user",
-            "content": "Explain multi-head attention."
+            "content": "Hello, this is a Relay integration test."
         }
-    ],
-    "stream": False
+    ]
 }
 
-start = time.perf_counter()
 
-response = requests.post(
-    f"{BASE_URL}/v1/chat/completions",
-    json=payload,
-    timeout=70
-)
+@pytest.fixture(scope="module", autouse=True)
+def check_relay_available():
+    """Ensure the Relay server is running before integration tests."""
+    try:
+        response = requests.get(
+            f"{BASE_URL}/health",
+            timeout=5
+        )
+        response.raise_for_status()
+    except requests.RequestException as error:
+        pytest.fail(
+            f"Relay server is unavailable at {BASE_URL}: {error}"
+        )
 
-elapsed = (
-    time.perf_counter() - start
-) * 1000
 
-print("HTTP Status:", response.status_code)
-print("Response time:", round(elapsed, 2), "ms")
-print("Response:", response.json())
+def test_relay_health():
+    response = requests.get(
+        f"{BASE_URL}/health",
+        timeout=10
+    )
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), dict)
 
 
-# ----------------------------------
-# TEST 3: QUEUE METRICS
-# ----------------------------------
+def test_relay_model_request():
+    response = requests.post(
+        f"{BASE_URL}/v1/chat/completions",
+        json=PAYLOAD,
+        timeout=70
+    )
 
-print("\n--- RELAY QUEUE METRICS ---")
+    assert response.status_code == 200
+    assert isinstance(response.json(), dict)
 
-metrics = requests.get(
-    f"{BASE_URL}/metrics",
-    timeout=10
-)
 
-print("Metrics:", metrics.json())
+def test_relay_queue_metrics():
+    response = requests.get(
+        f"{BASE_URL}/metrics",
+        timeout=10
+    )
 
-print("\nRelay integration test completed.")
+    assert response.status_code == 200
+
+    metrics = response.json()
+
+    assert isinstance(metrics, dict)
+    assert "workers" in metrics
+    assert "queue_capacity" in metrics
+    assert "completed" in metrics
+    assert "rejected" in metrics
+    assert "failed" in metrics
